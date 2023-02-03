@@ -108,8 +108,10 @@ func parseScaffoldCommandArgs(args []string) (*scaffoldCommandArgs, error) {
 		SingularEntity:    capitalize(tableParts[0]),
 		PluralEntity:      capitalize(tableParts[1]),
 		NoExistsClause:    *noExistsClauseFlag,
-		OrderBy:           fmt.Sprintf("\"%s\"", *orderByFlag),
 		NoReturningClause: *noReturningClauseFlag,
+	}
+	if *orderByFlag != "" {
+		sca.OrderBy = fmt.Sprintf("\"%s\"", *orderByFlag)
 	}
 	for _, arg := range args[1:] {
 		parts := strings.Split(arg, ":")
