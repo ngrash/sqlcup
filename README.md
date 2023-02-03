@@ -5,7 +5,7 @@
 ## Installation
 
 ```
-$ go install github.com/ngrash/sqlcup/cmd/sqlcup
+$ go install github.com/ngrash/sqlcup/cmd/sqlcup@v0.1.0
 ```
 
 ## Usage
