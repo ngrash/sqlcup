@@ -46,14 +46,13 @@ func printUsage() {
 	fmt.Fprintln(w, "  sqlcup prints SQL statements to stdout. The <name> argument given to sqlcup")
 	fmt.Fprintln(w, "  must be of the form <singular>/<plural> where <singular> is the name of the")
 	fmt.Fprintln(w, "  Go struct and <plural> is the name of the database table.")
-	fmt.Fprintln(w, "  sqlcup capitalizes those names where required and always escapes them in")
-	fmt.Fprintln(w, "  SQL statements.")
+	fmt.Fprintln(w, "  sqlcup capitalizes those names where required.")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "  Each <column> arguments given to sqlcup defines a database column and must")
 	fmt.Fprintln(w, "  be of the form <name>:<type>[:<constraint>]. <name>, <type> and the")
 	fmt.Fprintln(w, "  optional <constraint> are used to generate a CREATE TABLE statement.")
 	fmt.Fprintln(w, "  In addition, <name> also appears in the SQL queries. sqlcup never")
-	fmt.Fprintln(w, "  capitalizes those names and always escapes them in SQL statements.")
+	fmt.Fprintln(w, "  capitalizes those names.")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "  If any part of a <column> contains a space, it may be necessary to add")
 	fmt.Fprintln(w, "  quotes or escape those spaces, depending on the user's shell.")
@@ -104,14 +103,12 @@ func parseScaffoldCommandArgs(args []string) (*scaffoldCommandArgs, error) {
 	}
 
 	sca := &scaffoldCommandArgs{
-		Table:             fmt.Sprintf("\"%s\"", tableParts[1]),
+		Table:             tableParts[1],
 		SingularEntity:    capitalize(tableParts[0]),
 		PluralEntity:      capitalize(tableParts[1]),
 		NoExistsClause:    *noExistsClauseFlag,
 		NoReturningClause: *noReturningClauseFlag,
-	}
-	if *orderByFlag != "" {
-		sca.OrderBy = fmt.Sprintf("\"%s\"", *orderByFlag)
+		OrderBy:           *orderByFlag,
 	}
 	for _, arg := range args[1:] {
 		parts := strings.Split(arg, ":")
@@ -119,7 +116,7 @@ func parseScaffoldCommandArgs(args []string) (*scaffoldCommandArgs, error) {
 			return nil, fmt.Errorf("%w: invalid <column>: '%s', expected '<name>:<type>' or '<name>:<type>:<constraint>'", errBadArgument, arg)
 		}
 		col := column{
-			Name: fmt.Sprintf("\"%s\"", parts[0]),
+			Name: parts[0],
 			Type: parts[1],
 		}
 		if len(col.Name) > sca.LongestName {

@@ -13,7 +13,7 @@ $ go install github.com/ngrash/sqlcup/cmd/sqlcup
 ```
 $ sqlcup -help
 sqlcup - generate SQL statements for sqlc (https://sqlc.dev)
-                              
+                  
 Synopsis:
   sqlcup [options] <name> <column> ...
 
@@ -21,18 +21,17 @@ Description:
   sqlcup prints SQL statements to stdout. The <name> argument given to sqlcup
   must be of the form <singular>/<plural> where <singular> is the name of the
   Go struct and <plural> is the name of the database table. 
-  sqlcup capitalizes those names where required and always escapes them in
-  SQL statements.
-
+  sqlcup capitalizes those names where required.                   
+  
   Each <column> arguments given to sqlcup defines a database column and must
   be of the form <name>:<type>[:<constraint>]. <name>, <type> and the
   optional <constraint> are used to generate a CREATE TABLE statement.
-  In addition, <name> also appears in the SQL queries. sqlcup never
-  capitalizes those names and always escapes them in SQL statements.
-
+  In addition, <name> also appears in the SQL queries. sqlcup never        
+  capitalizes those names.           
+                                                    
   If any part of a <column> contains a space, it may be necessary to add
-  quotes or escape those spaces, depending on the user's shell.
-
+  quotes or escape those spaces, depending on the user's shell.      
+               
 Example:
   sqlcup author/authors "id:INTEGER:PRIMARY KEY" "name:text:NOT NULL" bio:text
   sqlcup --order-by name user/users "id:INTEGER:PRIMARY KEY" name:text
