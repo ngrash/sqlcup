@@ -15,7 +15,7 @@ var (
 	noExistsClauseFlag    = flag.Bool("no-exists-clause", false, "Omit IF NOT EXISTS in CREATE TABLE statements")
 	idColumnFlag          = flag.String("id-column", "id", "Name of the column that identifies a row")
 	orderByFlag           = flag.String("order-by", "", "Include ORDER BY in 'SELECT *' statement")
-	noReturningClauseFlag = flag.Bool("no-returning-clause", false, "Omit 'RETURN *' in UPDATE statement")
+	noReturningClauseFlag = flag.Bool("no-returning-clause", false, "Omit 'RETURNING *' in UPDATE statement")
 )
 
 var errBadArgument = errors.New("bad argument")

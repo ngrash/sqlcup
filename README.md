@@ -43,7 +43,7 @@ Options:
   -no-exists-clause
         Omit IF NOT EXISTS in CREATE TABLE statements
   -no-returning-clause
-        Omit 'RETURN *' in UPDATE statement
+        Omit 'RETURNING *' in UPDATE statement
   -order-by string
         Include ORDER BY in 'SELECT *' statement
 ```
