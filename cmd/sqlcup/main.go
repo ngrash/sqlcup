@@ -252,14 +252,20 @@ func writeCreateQuery(w io.Writer, args *scaffoldCommandArgs) {
 
 //goland:noinspection GoUnhandledErrorResult
 func writeDeleteQuery(w io.Writer, args *scaffoldCommandArgs) {
-	fmt.Fprintf(w, "-- name: Delete%s\n", args.SingularEntity)
+	fmt.Fprintf(w, "-- name: Delete%s :exec\n", args.SingularEntity)
 	fmt.Fprintf(w, "DELETE FROM %s\n", args.Table)
 	fmt.Fprintf(w, "WHERE %s = ?;", args.IDColumn.Name)
 }
 
 //goland:noinspection GoUnhandledErrorResult
 func writeUpdateQuery(w io.Writer, args *scaffoldCommandArgs) {
-	fmt.Fprintf(w, "-- name: Update%s\n", args.SingularEntity)
+	var mode string
+	if args.NoReturningClause {
+		mode = ":exec"
+	} else {
+		mode = ":one"
+	}
+	fmt.Fprintf(w, "-- name: Update%s %s\n", args.SingularEntity, mode)
 	fmt.Fprintf(w, "UPDATE %s\n", args.Table)
 	fmt.Fprintf(w, "SET\n")
 	for i, col := range args.NonIDColumns {
