@@ -50,15 +50,15 @@ Options:
 ## Example
 
 ```
-$ sqlcup author/authors "id:INTEGER:PRIMARY KEY" "name:text:NOT NULL" bio:text
+$ sqlcup --order-by name author/authors "id:INTEGER:PRIMARY KEY" "name:text:NOT NULL" bio:text
 #############################################
 # Add the following to your SQL schema file #
 #############################################
 
-CREATE TABLE IF NOT EXISTS "authors" (
-  "id"   INTEGER PRIMARY KEY,
-  "name" text    NOT NULL,
-  "bio"  text
+CREATE TABLE IF NOT EXISTS authors (
+  id   INTEGER PRIMARY KEY,
+  name text    NOT NULL,
+  bio  text
 );
 
 ##############################################
@@ -66,30 +66,30 @@ CREATE TABLE IF NOT EXISTS "authors" (
 ##############################################
 
 -- name: GetAuthor :one
-SELECT * FROM "authors"
-WHERE "id" = ? LIMIT 1;
+SELECT * FROM authors
+WHERE id = ? LIMIT 1;
 
 -- name: ListAuthors :many
-SELECT * FROM "authors"
-ORDER BY "";
+SELECT * FROM authors
+ORDER BY name;
 
 -- name: CreateAuthor :one
-INSERT INTO "authors" (
-  "name", "bio"
+INSERT INTO authors (
+  name, bio
 ) VALUES (
   ?, ?
 )
 RETURNING *;
 
--- name: DeleteAuthor
-DELETE FROM "authors"
-WHERE "id" = ?;
+-- name: DeleteAuthor :exec
+DELETE FROM authors
+WHERE id = ?;
 
--- name: UpdateAuthor
-UPDATE "authors"
+-- name: UpdateAuthor :one
+UPDATE authors
 SET
-  "name" = ?,
-  "bio" = ?
-WHERE "id" = ?
+  name = ?,
+  bio = ?
+WHERE id = ?
 RETURNING *;
 ```
