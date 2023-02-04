@@ -78,6 +78,7 @@ type column struct {
 	Name       string
 	Type       string
 	Constraint string
+	ID         bool
 }
 
 type outputMode uint8
@@ -102,6 +103,22 @@ type scaffoldCommandArgs struct {
 	OrderBy           string
 	NoReturningClause bool
 	Output            outputMode
+}
+
+func parseColumnDefinition(s string) (column, error) {
+	parts := strings.Split(s, ":")
+	if len(parts) < 2 || len(parts) > 3 {
+		return column{}, fmt.Errorf("%w: invalid <column>: '%s', expected '<name>:<type>' or '<name>:<type>:<constraint>'", errBadArgument, s)
+	}
+	col := column{
+		ID:   strings.ToLower(parts[0]) == *idColumnFlag,
+		Name: parts[0],
+		Type: parts[1],
+	}
+	if len(parts) == 3 {
+		col.Constraint = parts[2]
+	}
+	return col, nil
 }
 
 func parseScaffoldCommandArgs(args []string) (*scaffoldCommandArgs, error) {
@@ -134,13 +151,9 @@ func parseScaffoldCommandArgs(args []string) (*scaffoldCommandArgs, error) {
 	}
 
 	for _, arg := range args[1:] {
-		parts := strings.Split(arg, ":")
-		if len(parts) < 2 || len(parts) > 3 {
-			return nil, fmt.Errorf("%w: invalid <column>: '%s', expected '<name>:<type>' or '<name>:<type>:<constraint>'", errBadArgument, arg)
-		}
-		col := column{
-			Name: parts[0],
-			Type: parts[1],
+		col, err := parseColumnDefinition(arg)
+		if err != nil {
+			return nil, err
 		}
 		if len(col.Name) > sca.LongestName {
 			sca.LongestName = len(col.Name)
@@ -148,12 +161,8 @@ func parseScaffoldCommandArgs(args []string) (*scaffoldCommandArgs, error) {
 		if len(col.Type) > sca.LongestType {
 			sca.LongestType = len(col.Type)
 		}
-		if len(parts) == 3 {
-			col.Constraint = parts[2]
-		}
-
 		sca.Columns = append(sca.Columns, col)
-		if strings.ToLower(parts[0]) == *idColumnFlag {
+		if col.ID {
 			sca.IDColumn = &col
 		} else {
 			sca.NonIDColumns = append(sca.NonIDColumns, col)
