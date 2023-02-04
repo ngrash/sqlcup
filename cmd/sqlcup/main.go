@@ -2,6 +2,7 @@
 package main
 
 import (
+	_ "embed"
 	"errors"
 	"flag"
 	"fmt"
@@ -19,7 +20,10 @@ var (
 	onlyFlag              = flag.String("only", "", "Limit output to 'schema' or 'queries'")
 )
 
-var errBadArgument = errors.New("bad argument")
+var (
+	errBadArgument        = errors.New("bad argument")
+	errInvalidSmartColumn = fmt.Errorf("%w: invalid <smart-column>", errBadArgument)
+)
 
 func main() {
 	flag.CommandLine.SetOutput(os.Stdout)
@@ -35,34 +39,13 @@ func main() {
 	}
 }
 
+//go:embed usage.txt
+var usage string
+
 //goland:noinspection GoUnhandledErrorResult
 func printUsage() {
 	w := flag.CommandLine.Output()
-	fmt.Fprintln(w, "sqlcup - generate SQL statements for sqlc (https://sqlc.dev)")
-	fmt.Fprintln(w)
-	fmt.Fprintln(w, "Synopsis:")
-	fmt.Fprintln(w, "  sqlcup [options] <name> <column> ...")
-	fmt.Fprintln(w)
-	fmt.Fprintln(w, "Description:")
-	fmt.Fprintln(w, "  sqlcup prints SQL statements to stdout. The <name> argument given to sqlcup")
-	fmt.Fprintln(w, "  must be of the form <singular>/<plural> where <singular> is the name of the")
-	fmt.Fprintln(w, "  Go struct and <plural> is the name of the database table.")
-	fmt.Fprintln(w, "  sqlcup capitalizes those names where required.")
-	fmt.Fprintln(w)
-	fmt.Fprintln(w, "  Each <column> arguments given to sqlcup defines a database column and must")
-	fmt.Fprintln(w, "  be of the form <name>:<type>[:<constraint>]. <name>, <type> and the")
-	fmt.Fprintln(w, "  optional <constraint> are used to generate a CREATE TABLE statement.")
-	fmt.Fprintln(w, "  In addition, <name> also appears in the SQL queries. sqlcup never")
-	fmt.Fprintln(w, "  capitalizes those names.")
-	fmt.Fprintln(w)
-	fmt.Fprintln(w, "  If any part of a <column> contains a space, it may be necessary to add")
-	fmt.Fprintln(w, "  quotes or escape those spaces, depending on the user's shell.")
-	fmt.Fprintln(w)
-	fmt.Fprintln(w, "Example:")
-	fmt.Fprintln(w, "  sqlcup author/authors \"id:INTEGER:PRIMARY KEY\" \"name:text:NOT NULL\" bio:text")
-	fmt.Fprintln(w, "  sqlcup --order-by name user/users \"id:INTEGER:PRIMARY KEY\" name:text")
-	fmt.Fprintln(w)
-	fmt.Fprintln(w, "Options:")
+	fmt.Fprintln(w, usage)
 	flag.PrintDefaults()
 }
 
@@ -106,9 +89,109 @@ type scaffoldCommandArgs struct {
 }
 
 func parseColumnDefinition(s string) (column, error) {
+	var (
+		plainColumn = strings.Contains(s, ":")
+		smartColumn = strings.Contains(s, "#")
+	)
+	if plainColumn && smartColumn {
+		return column{}, fmt.Errorf("%w: invalid <column>: '%s' contains both plain and smart separators", errBadArgument, s)
+	}
+	if plainColumn {
+		return parsePlainColumnDefinition(s)
+	} else if smartColumn {
+		return parseSmartColumnDefinition(s)
+	}
+	return column{}, fmt.Errorf("%w: invalid <column>: '%s', expected <smart-column> or <plain-column>", errBadArgument, s)
+}
+
+func parseSmartColumnDefinition(s string) (column, error) {
+	if s == "#id" {
+		return column{
+			ID:         true,
+			Name:       "id",
+			Type:       "INTEGER",
+			Constraint: "PRIMARY KEY",
+		}, nil
+	}
+
+	name, rest, _ := strings.Cut(s, "#")
+	if name == "" {
+		return column{}, fmt.Errorf("%w: '%s', missing <name>", errInvalidSmartColumn, s)
+	}
+
+	var (
+		colType string
+		id      bool
+		null    bool
+		unique  bool
+	)
+	tags := strings.Split(rest, "#")
+	for _, tag := range tags {
+		switch tag {
+		case "id":
+			id = true
+		case "null":
+			null = true
+		case "unique":
+			unique = true
+		case "float":
+			colType = "FLOAT"
+		case "double":
+			colType = "DOUBLE"
+		case "datetime":
+			colType = "DATETIME"
+		case "text":
+			colType = "TEXT"
+		case "int":
+			colType = "INTEGER"
+		case "blob":
+			colType = "BLOB"
+		default:
+			return column{}, fmt.Errorf("%w: '%s': unknown <tag> #%s", errInvalidSmartColumn, s, tag)
+		}
+	}
+	if id {
+		if unique || null {
+			return column{}, fmt.Errorf("%w: '%s', cannot combine #id with #unique or #null", errInvalidSmartColumn, s)
+		}
+		if colType == "" {
+			colType = "INTEGER"
+		}
+		// sqlite special case
+		var constraint = "PRIMARY KEY"
+		if colType != "INTEGER" {
+			constraint = "NOT NULL " + constraint
+		}
+		return column{
+			Name:       name,
+			Type:       colType,
+			Constraint: constraint,
+			ID:         true,
+		}, nil
+	}
+
+	if colType == "" {
+		return column{}, fmt.Errorf("%w: '%s' missing column type", errInvalidSmartColumn, s)
+	}
+	constraint := ""
+	if !null {
+		constraint += " NOT NULL"
+	}
+	if unique {
+		constraint += " UNIQUE"
+	}
+	return column{
+		Name:       name,
+		Type:       colType,
+		Constraint: strings.TrimSpace(constraint),
+		ID:         false,
+	}, nil
+}
+
+func parsePlainColumnDefinition(s string) (column, error) {
 	parts := strings.Split(s, ":")
 	if len(parts) < 2 || len(parts) > 3 {
-		return column{}, fmt.Errorf("%w: invalid <column>: '%s', expected '<name>:<type>' or '<name>:<type>:<constraint>'", errBadArgument, s)
+		return column{}, fmt.Errorf("%w: invalid <plain-column>: '%s', expected '<name>:<type>' or '<name>:<type>:<constraint>'", errBadArgument, s)
 	}
 	col := column{
 		ID:   strings.ToLower(parts[0]) == *idColumnFlag,
