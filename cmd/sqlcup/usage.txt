@@ -18,21 +18,21 @@ Description:
   capitalizes those names. To use <tag> you need to define a <smart-column>.
 
   A <smart-column> is a shortcut for common column definitions. It must be of
-  the form <name>#<tag>#<tag>...
+  the form <name>@<tag>@<tag>...
 
   A <tag> adds either a data type or a constraint to a <smart-column>.
 
-      #id
+      @id
           Make this column the primary key. Omitting column type and <name>
-          for an #id column creates an INTEGER PRIMARY KEY named 'id'.
+          for an @id column creates an INTEGER PRIMARY KEY named 'id'.
 
-      #text, #int, #float, #double, #datetime, #blob
+      @text, @int, @float, @double, @datetime, @blob
           Set the column type.
 
-      #unique
+      @unique
           Add a UNIQUE constraint.
 
-      #null
+      @null
           Omit NOT NULL constraint.
 
   If any part of a <column> contains a space, it may be necessary to add
@@ -41,6 +41,6 @@ Description:
 Example:
   sqlcup author/authors "id:INTEGER:PRIMARY KEY" "name:text:NOT NULL" bio:text
   sqlcup --order-by name user/users "id:INTEGER:PRIMARY KEY" name:text
-  sqlcup author/authors #id name#text#unique bio#text#null
+  sqlcup author/authors @id name@text@unique bio@text@null
 
 Options:

@@ -5,7 +5,7 @@
 ## Installation
 
 ```
-$ go install github.com/ngrash/sqlcup/cmd/sqlcup@v0.3.0
+$ go install github.com/ngrash/sqlcup/cmd/sqlcup@v0.4.0
 ```
 
 ## Usage
@@ -14,29 +14,50 @@ $ go install github.com/ngrash/sqlcup/cmd/sqlcup@v0.3.0
 $ sqlcup -help
 sqlcup - generate SQL statements for sqlc (https://sqlc.dev)
 
-Synopsis:                                                                     
-  sqlcup [options] <name> <column> ...                                        
-                                                                              
-Description:                                                                  
-  sqlcup prints SQL statements to stdout. The <name> argument given to sqlcup 
-  must be of the form <singular>/<plural> where <singular> is the name of the 
-  Go struct and <plural> is the name of the database table.                   
-  sqlcup capitalizes those names where required.                              
-                                                                              
-  Each <column> arguments given to sqlcup defines a database column and must  
-  be of the form <name>:<type>[:<constraint>]. <name>, <type> and the         
-  optional <constraint> are used to generate a CREATE TABLE statement.        
-  In addition, <name> also appears in the SQL queries. sqlcup never           
-  capitalizes those names.                                                    
-                                                                              
-  If any part of a <column> contains a space, it may be necessary to add      
-  quotes or escape those spaces, depending on the user's shell.               
-                                                                              
-Example:                                                                      
-  sqlcup author/authors "id:INTEGER:PRIMARY KEY" "name:text:NOT NULL" bio:text
-  sqlcup --order-by name user/users "id:INTEGER:PRIMARY KEY" name:text        
-                                                                              
-Options:                                                                      
+Synopsis:
+  sqlcup [options] <name> <column> ...
+
+Description:
+  sqlcup prints SQL statements to stdout. The <name> argument given to sqlcup
+  must be of the form <singular>/<plural> where <singular> is the name of the
+  Go struct and <plural> is the name of the database table.
+  sqlcup capitalizes those names where required.
+
+  Each column argument given to sqlcup defines a database column and must
+  be either a <plain-column> or a <smart-column>:
+
+  A <plain-column> must be of the form <name>:<type>[:<constraint>]. <name>,
+  <type> and the optional <constraint> are used to generate a CREATE TABLE
+  statement. In addition, <name> also appears in SQL queries. sqlcup never
+  capitalizes those names. To use <tag> you need to define a <smart-column>.
+
+  A <smart-column> is a shortcut for common column definitions. It must be of
+  the form <name>@<tag>@<tag>...
+
+  A <tag> adds either a data type or a constraint to a <smart-column>.
+
+      @id
+          Make this column the primary key. Omitting column type and <name>     
+          for an @id column creates an INTEGER PRIMARY KEY named 'id'.
+
+      @text, @int, @float, @double, @datetime, @blob
+          Set the column type.
+
+      @unique
+          Add a UNIQUE constraint.
+
+      @null
+          Omit NOT NULL constraint.
+
+  If any part of a <column> contains a space, it may be necessary to add        
+  quotes or escape those spaces, depending on the user's shell.
+
+Example:
+  sqlcup author/authors "id:INTEGER:PRIMARY KEY" "name:text:NOT NULL" bio:text  
+  sqlcup --order-by name user/users "id:INTEGER:PRIMARY KEY" name:text
+  sqlcup author/authors @id name@text@unique bio@text@null
+
+Options:
   -id-column string
         Name of the column that identifies a row (default "id")
   -no-exists-clause
@@ -47,6 +68,7 @@ Options:
         Limit output to 'schema' or 'queries'
   -order-by string
         Include ORDER BY in 'SELECT *' statement
+
 ```
 
 ## Example

@@ -12,6 +12,11 @@ import (
 	"unicode"
 )
 
+const (
+	plainColumnSep = ":"
+	smartColumnSep = "@"
+)
+
 var (
 	noExistsClauseFlag    = flag.Bool("no-exists-clause", false, "Omit IF NOT EXISTS in CREATE TABLE statements")
 	idColumnFlag          = flag.String("id-column", "id", "Name of the column that identifies a row")
@@ -90,8 +95,8 @@ type scaffoldCommandArgs struct {
 
 func parseColumnDefinition(s string) (column, error) {
 	var (
-		plainColumn = strings.Contains(s, ":")
-		smartColumn = strings.Contains(s, "#")
+		plainColumn = strings.Contains(s, plainColumnSep)
+		smartColumn = strings.Contains(s, smartColumnSep)
 	)
 	if plainColumn && smartColumn {
 		return column{}, fmt.Errorf("%w: invalid <column>: '%s' contains both plain and smart separators", errBadArgument, s)
@@ -105,7 +110,7 @@ func parseColumnDefinition(s string) (column, error) {
 }
 
 func parseSmartColumnDefinition(s string) (column, error) {
-	if s == "#id" {
+	if s == "@id" {
 		return column{
 			ID:         true,
 			Name:       "id",
@@ -114,7 +119,7 @@ func parseSmartColumnDefinition(s string) (column, error) {
 		}, nil
 	}
 
-	name, rest, _ := strings.Cut(s, "#")
+	name, rest, _ := strings.Cut(s, smartColumnSep)
 	if name == "" {
 		return column{}, fmt.Errorf("%w: '%s', missing <name>", errInvalidSmartColumn, s)
 	}
@@ -125,7 +130,7 @@ func parseSmartColumnDefinition(s string) (column, error) {
 		null    bool
 		unique  bool
 	)
-	tags := strings.Split(rest, "#")
+	tags := strings.Split(rest, smartColumnSep)
 	for _, tag := range tags {
 		switch tag {
 		case "id":
@@ -152,7 +157,7 @@ func parseSmartColumnDefinition(s string) (column, error) {
 	}
 	if id {
 		if unique || null {
-			return column{}, fmt.Errorf("%w: '%s', cannot combine #id with #unique or #null", errInvalidSmartColumn, s)
+			return column{}, fmt.Errorf("%w: '%s', cannot combine @id with @unique or @null", errInvalidSmartColumn, s)
 		}
 		if colType == "" {
 			colType = "INTEGER"

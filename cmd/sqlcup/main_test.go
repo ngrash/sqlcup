@@ -9,7 +9,7 @@ var smartColTests = map[string]struct {
 	col column
 	err error
 }{
-	"#id": {
+	"@id": {
 		col: column{
 			Name:       "id",
 			Type:       "INTEGER",
@@ -17,7 +17,7 @@ var smartColTests = map[string]struct {
 			ID:         true,
 		},
 	},
-	"col_id#id": {
+	"col_id@id": {
 		col: column{
 			Name:       "col_id",
 			Type:       "INTEGER",
@@ -25,7 +25,7 @@ var smartColTests = map[string]struct {
 			ID:         true,
 		},
 	},
-	"primary_key#text#id": {
+	"primary_key@text@id": {
 		col: column{
 			Name:       "primary_key",
 			Type:       "TEXT",
@@ -33,7 +33,7 @@ var smartColTests = map[string]struct {
 			ID:         true,
 		},
 	},
-	"col#text": {
+	"col@text": {
 		col: column{
 			Name:       "col",
 			Type:       "TEXT",
@@ -41,7 +41,7 @@ var smartColTests = map[string]struct {
 			ID:         false,
 		},
 	},
-	"col#text#null": {
+	"col@text@null": {
 		col: column{
 			Name:       "col",
 			Type:       "TEXT",
@@ -49,7 +49,7 @@ var smartColTests = map[string]struct {
 			ID:         false,
 		},
 	},
-	"col#text#unique": {
+	"col@text@unique": {
 		col: column{
 			Name:       "col",
 			Type:       "TEXT",
@@ -57,7 +57,7 @@ var smartColTests = map[string]struct {
 			ID:         false,
 		},
 	},
-	"col#int": {
+	"col@int": {
 		col: column{
 			Name:       "col",
 			Type:       "INTEGER",
@@ -65,7 +65,7 @@ var smartColTests = map[string]struct {
 			ID:         false,
 		},
 	},
-	"col#datetime": {
+	"col@datetime": {
 		col: column{
 			Name:       "col",
 			Type:       "DATETIME",
