@@ -16,6 +16,7 @@ var (
 	idColumnFlag          = flag.String("id-column", "id", "Name of the column that identifies a row")
 	orderByFlag           = flag.String("order-by", "", "Include ORDER BY in 'SELECT *' statement")
 	noReturningClauseFlag = flag.Bool("no-returning-clause", false, "Omit 'RETURNING *' in UPDATE statement")
+	onlyFlag              = flag.String("only", "", "Limit output to 'schema' or 'queries'")
 )
 
 var errBadArgument = errors.New("bad argument")
@@ -79,6 +80,15 @@ type column struct {
 	Constraint string
 }
 
+type outputMode uint8
+
+const (
+	outputSchema outputMode = 1 << iota
+	outputQueries
+
+	outputAll = outputSchema | outputQueries
+)
+
 type scaffoldCommandArgs struct {
 	Table             string
 	SingularEntity    string
@@ -91,12 +101,14 @@ type scaffoldCommandArgs struct {
 	NoExistsClause    bool
 	OrderBy           string
 	NoReturningClause bool
+	Output            outputMode
 }
 
 func parseScaffoldCommandArgs(args []string) (*scaffoldCommandArgs, error) {
 	if len(args) == 0 {
 		return nil, fmt.Errorf("%w: missing <name> and <column>", errBadArgument)
 	}
+
 	tableParts := strings.Split(args[0], "/")
 	if len(tableParts) != 2 || len(tableParts[0]) == 0 || len(tableParts[1]) == 0 {
 		return nil, fmt.Errorf("%w: invalid <name>: '%s', expected '<singular>/<plural>'", errBadArgument, tableParts)
@@ -110,6 +122,17 @@ func parseScaffoldCommandArgs(args []string) (*scaffoldCommandArgs, error) {
 		NoReturningClause: *noReturningClauseFlag,
 		OrderBy:           *orderByFlag,
 	}
+	switch *onlyFlag {
+	case "schema":
+		sca.Output = sca.Output | outputSchema
+	case "queries":
+		sca.Output = sca.Output | outputQueries
+	case "":
+		sca.Output = sca.Output | outputAll
+	default:
+		return nil, fmt.Errorf("%w: '-only %s', expected 'schema' or 'queries'", errBadArgument, *onlyFlag)
+	}
+
 	for _, arg := range args[1:] {
 		parts := strings.Split(arg, ":")
 		if len(parts) < 2 || len(parts) > 3 {
@@ -142,36 +165,41 @@ func parseScaffoldCommandArgs(args []string) (*scaffoldCommandArgs, error) {
 func scaffoldCommand(args *scaffoldCommandArgs) error {
 	b := &strings.Builder{}
 
-	b.WriteString("#############################################\n")
-	b.WriteString("# Add the following to your SQL schema file #\n")
-	b.WriteString("#############################################\n\n")
-	writeSchema(b, args)
-	b.WriteString("\n\n")
-
-	b.WriteString("##############################################\n")
-	b.WriteString("# Add the following to your SQL queries file #\n")
-	b.WriteString("##############################################\n\n")
-	if args.IDColumn != nil {
-		writeGetQuery(b, args)
+	if args.Output&outputAll == outputAll {
+		b.WriteString("#############################################\n")
+		b.WriteString("# Add the following to your SQL schema file #\n")
+		b.WriteString("#############################################\n\n")
+	}
+	if args.Output&outputSchema != 0 {
+		writeSchema(b, args)
 		b.WriteString("\n\n")
 	}
+	if args.Output&outputAll == outputAll {
+		b.WriteString("##############################################\n")
+		b.WriteString("# Add the following to your SQL queries file #\n")
+		b.WriteString("##############################################\n\n")
+	}
+	if args.Output&outputQueries != 0 {
+		if args.IDColumn != nil {
+			writeGetQuery(b, args)
+			b.WriteString("\n\n")
+		}
 
-	writeListQuery(b, args)
-	b.WriteString("\n\n")
+		writeListQuery(b, args)
+		b.WriteString("\n\n")
 
-	writeCreateQuery(b, args)
-	b.WriteString("\n")
-
-	if args.IDColumn != nil {
+		writeCreateQuery(b, args)
 		b.WriteString("\n")
-		writeDeleteQuery(b, args)
-		b.WriteString("\n\n")
-		writeUpdateQuery(b, args)
-		b.WriteString("\n\n")
+
+		if args.IDColumn != nil {
+			b.WriteString("\n")
+			writeDeleteQuery(b, args)
+			b.WriteString("\n\n")
+			writeUpdateQuery(b, args)
+			b.WriteString("\n\n")
+		}
 	}
-
 	fmt.Print(b)
-
 	return nil
 }
 
