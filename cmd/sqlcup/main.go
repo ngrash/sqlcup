@@ -259,8 +259,8 @@ func parseScaffoldCommandArgs(args []string) (*scaffoldCommandArgs, error) {
 
 	sca := &scaffoldCommandArgs{
 		Table:             tableParts[1],
-		SingularEntity:    capitalize(tableParts[0]),
-		PluralEntity:      capitalize(tableParts[1]),
+		SingularEntity:    upperCamelCase(tableParts[0]),
+		PluralEntity:      upperCamelCase(tableParts[1]),
 		NoExistsClause:    *noExistsClauseFlag,
 		NoReturningClause: *noReturningClauseFlag,
 		OrderBy:           *orderByFlag,
@@ -444,6 +444,19 @@ func writeUpdateQuery(w io.Writer, args *scaffoldCommandArgs) {
 	} else {
 		fmt.Fprintf(w, ";")
 	}
+}
+
+// upperCamelCase converts a string like "zipcode_imports" to "ZipcodeImports".
+func upperCamelCase(s string) string {
+	parts := strings.Split(s, "_")
+	if len(parts) == 1 {
+		return capitalize(s)
+	}
+	b := strings.Builder{}
+	for _, p := range parts {
+		b.WriteString(capitalize(p))
+	}
+	return b.String()
 }
 
 func capitalize(s string) string {

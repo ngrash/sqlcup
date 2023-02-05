@@ -5,7 +5,7 @@
 ## Installation
 
 ```
-$ go install github.com/ngrash/sqlcup/cmd/sqlcup@v0.4.1
+$ go install github.com/ngrash/sqlcup/cmd/sqlcup@v0.4.2
 ```
 
 ## Usage
@@ -19,8 +19,8 @@ Synopsis:
 
 Description:
   sqlcup prints SQL statements to stdout. The <entity-name> argument must be
-  of the form <singular-name>/<plural-name>. sqlcup capitalizes those names
-  where necessary.
+  of the form <singular-name>/<plural-name>. sqlcup converts those names to
+  upper camel case where necessary.
 
   Each column argument given to sqlcup defines a database column and must
   be either a <plain-column> or a <smart-column>:
