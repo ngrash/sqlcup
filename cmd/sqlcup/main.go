@@ -12,11 +12,6 @@ import (
 	"unicode"
 )
 
-const (
-	plainColumnSep = ":"
-	smartColumnSep = "@"
-)
-
 var (
 	noExistsClauseFlag    = flag.Bool("no-exists-clause", false, "Omit IF NOT EXISTS in CREATE TABLE statements")
 	idColumnFlag          = flag.String("id-column", "id", "Name of the column that identifies a row")
@@ -25,41 +20,84 @@ var (
 	onlyFlag              = flag.String("only", "", "Limit output to 'schema' or 'queries'")
 )
 
+const (
+	plainColumnSep = ":"
+	smartColumnSep = "@"
+)
+
+const (
+	exitCodeBadArgument   = 1
+	exitCodeInternalError = 2
+)
+
 var (
 	errBadArgument        = errors.New("bad argument")
 	errInvalidSmartColumn = fmt.Errorf("%w: invalid <smart-column>", errBadArgument)
 )
 
-func main() {
-	flag.CommandLine.SetOutput(os.Stdout)
-	flag.Usage = printUsage
-	flag.Parse()
-
-	if err := run(); err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "%s: %s\n", os.Args[0], err)
-		if errors.Is(err, errBadArgument) {
-			flag.Usage()
-		}
-		os.Exit(1)
-	}
-}
-
+// usage contains the inline documentation for sqlcup.
 //go:embed usage.txt
 var usage string
 
-//goland:noinspection GoUnhandledErrorResult
-func printUsage() {
-	w := flag.CommandLine.Output()
-	fmt.Fprintln(w, usage)
-	flag.PrintDefaults()
+func main() {
+	// Suppress error logs from flag package while parsing flags.
+	flag.CommandLine.SetOutput(io.Discard)
+	// With flag.ContinueOnError we prevent Parse from calling os.Exit on error and instead show our own error message.
+	flag.CommandLine.Init(os.Args[0], flag.ContinueOnError)
+	if err := flag.CommandLine.Parse(os.Args[1:]); err != nil {
+		if err == flag.ErrHelp {
+			printHelp()
+			os.Exit(0)
+		}
+		fatalUsageError(err)
+	}
+
+	sca, err := parseScaffoldCommandArgs(flag.CommandLine.Args())
+	if err != nil {
+		exitWithError(err)
+	}
+
+	err = scaffoldCommand(sca)
+	if err != nil {
+		exitWithError(err)
+	}
 }
 
-func run() error {
-	sca, err := parseScaffoldCommandArgs(flag.Args())
-	if err != nil {
-		return err
+// fatalUsageError writes the inline help to os.Stdout and the err to os.Stderr, then calls os.Exit(1).
+//goland:noinspection GoUnhandledErrorResult
+func fatalUsageError(err error) {
+	printHelp()
+
+	// Write error message to stderr.
+	fmt.Fprintf(os.Stderr, "%s: %s\n", os.Args[0], err)
+
+	// Exit process with non-zero status code to indicate failure to the calling process.
+	os.Exit(exitCodeBadArgument)
+}
+
+//goland:noinspection GoUnhandledErrorResult
+func printHelp() {
+	// Write usage documentation for sqlcup to stdout.
+	fmt.Fprintln(os.Stdout, usage)
+
+	// Write flag documentation and defaults to stdout.
+	flag.CommandLine.SetOutput(os.Stdout)
+	flag.CommandLine.PrintDefaults()
+	flag.CommandLine.SetOutput(io.Discard)
+	fmt.Fprintln(os.Stdout)
+}
+
+// exitWithError prints err to os.Stderr and calls os.Exit.
+// If err is (or wraps) errBadArgument, inline documentation is written to os.Stdout.
+//goland:noinspection GoUnhandledErrorResult
+func exitWithError(err error) {
+	if errors.Is(err, errBadArgument) {
+		fatalUsageError(err)
+	} else {
+		// This is not a user error, so we don't write inline help.
+		fmt.Fprintf(os.Stderr, "%s: %s\n", os.Args[0], err)
+		os.Exit(exitCodeInternalError)
 	}
-	return scaffoldCommand(sca)
 }
 
 type column struct {
@@ -152,7 +190,7 @@ func parseSmartColumnDefinition(s string) (column, error) {
 		case "blob":
 			colType = "BLOB"
 		default:
-			return column{}, fmt.Errorf("%w: '%s': unknown <tag> #%s", errInvalidSmartColumn, s, tag)
+			return column{}, fmt.Errorf("%w: '%s', unknown <tag> #%s", errInvalidSmartColumn, s, tag)
 		}
 	}
 	if id {
@@ -176,7 +214,7 @@ func parseSmartColumnDefinition(s string) (column, error) {
 	}
 
 	if colType == "" {
-		return column{}, fmt.Errorf("%w: '%s' missing column type", errInvalidSmartColumn, s)
+		return column{}, fmt.Errorf("%w: '%s', missing column type", errInvalidSmartColumn, s)
 	}
 	constraint := ""
 	if !null {
@@ -195,8 +233,8 @@ func parseSmartColumnDefinition(s string) (column, error) {
 
 func parsePlainColumnDefinition(s string) (column, error) {
 	parts := strings.Split(s, ":")
-	if len(parts) < 2 || len(parts) > 3 {
-		return column{}, fmt.Errorf("%w: invalid <plain-column>: '%s', expected '<name>:<type>' or '<name>:<type>:<constraint>'", errBadArgument, s)
+	if len(parts) < 2 || len(parts) > 3 || parts[0] == "" {
+		return column{}, fmt.Errorf("%w: invalid <plain-column>: '%s', expected '<name>:<type>[:<constraint>]'", errBadArgument, s)
 	}
 	col := column{
 		ID:   strings.ToLower(parts[0]) == *idColumnFlag,
@@ -331,14 +369,14 @@ func writeSchema(w io.Writer, args *scaffoldCommandArgs) {
 	fmt.Fprintf(w, ");")
 }
 
-//goland:noinspection GoUnhandledErrorResult
+//goland:noinspection GoUnhandledErrorResult,SqlNoDataSourceInspection
 func writeGetQuery(w io.Writer, args *scaffoldCommandArgs) {
 	fmt.Fprintf(w, "-- name: Get%s :one\n", args.SingularEntity)
 	fmt.Fprintf(w, "SELECT * FROM %s\n", args.Table)
 	fmt.Fprintf(w, "WHERE %s = ? LIMIT 1;", args.IDColumn.Name)
 }
 
-//goland:noinspection GoUnhandledErrorResult
+//goland:noinspection GoUnhandledErrorResult,SqlNoDataSourceInspection
 func writeListQuery(w io.Writer, args *scaffoldCommandArgs) {
 	fmt.Fprintf(w, "-- name: List%s :many\n", args.PluralEntity)
 	fmt.Fprintf(w, "SELECT * FROM %s", args.Table)
@@ -349,7 +387,7 @@ func writeListQuery(w io.Writer, args *scaffoldCommandArgs) {
 	}
 }
 
-//goland:noinspection GoUnhandledErrorResult
+//goland:noinspection GoUnhandledErrorResult,SqlNoDataSourceInspection
 func writeCreateQuery(w io.Writer, args *scaffoldCommandArgs) {
 	fmt.Fprintf(w, "-- name: Create%s :one\n", args.SingularEntity)
 	fmt.Fprintf(w, "INSERT INTO %s (\n", args.Table)
@@ -375,7 +413,7 @@ func writeCreateQuery(w io.Writer, args *scaffoldCommandArgs) {
 	fmt.Fprintf(w, "RETURNING *;")
 }
 
-//goland:noinspection GoUnhandledErrorResult
+//goland:noinspection GoUnhandledErrorResult,SqlNoDataSourceInspection
 func writeDeleteQuery(w io.Writer, args *scaffoldCommandArgs) {
 	fmt.Fprintf(w, "-- name: Delete%s :exec\n", args.SingularEntity)
 	fmt.Fprintf(w, "DELETE FROM %s\n", args.Table)

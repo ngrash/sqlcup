@@ -5,7 +5,7 @@
 ## Installation
 
 ```
-$ go install github.com/ngrash/sqlcup/cmd/sqlcup@v0.4.0
+$ go install github.com/ngrash/sqlcup/cmd/sqlcup@v0.4.1
 ```
 
 ## Usage
@@ -15,13 +15,12 @@ $ sqlcup -help
 sqlcup - generate SQL statements for sqlc (https://sqlc.dev)
 
 Synopsis:
-  sqlcup [options] <name> <column> ...
+  sqlcup [options] <entity-name> <column> ...
 
 Description:
-  sqlcup prints SQL statements to stdout. The <name> argument given to sqlcup
-  must be of the form <singular>/<plural> where <singular> is the name of the
-  Go struct and <plural> is the name of the database table.
-  sqlcup capitalizes those names where required.
+  sqlcup prints SQL statements to stdout. The <entity-name> argument must be
+  of the form <singular-name>/<plural-name>. sqlcup capitalizes those names
+  where necessary.
 
   Each column argument given to sqlcup defines a database column and must
   be either a <plain-column> or a <smart-column>:
@@ -32,12 +31,14 @@ Description:
   capitalizes those names. To use <tag> you need to define a <smart-column>.
 
   A <smart-column> is a shortcut for common column definitions. It must be of
-  the form <name>@<tag>@<tag>...
+  the form [<name>]<tag>... where <name> is only optional for the special case
+  when the <smart-column> consists of the single <tag> @id. A <smart-column> is
+  not nullable unless @null is present.
 
   A <tag> adds either a data type or a constraint to a <smart-column>.
 
       @id
-          Make this column the primary key. Omitting column type and <name>     
+          Make this column the primary key. Omitting <type> and <name>
           for an @id column creates an INTEGER PRIMARY KEY named 'id'.
 
       @text, @int, @float, @double, @datetime, @blob
@@ -47,10 +48,10 @@ Description:
           Add a UNIQUE constraint.
 
       @null
-          Omit NOT NULL constraint.
+          Omit the default NOT NULL constraint.
 
   If any part of a <column> contains a space, it may be necessary to add        
-  quotes or escape those spaces, depending on the user's shell.
+  quotes or otherwise escape those spaces, depending on the user's shell.       
 
 Example:
   sqlcup author/authors "id:INTEGER:PRIMARY KEY" "name:text:NOT NULL" bio:text  
@@ -68,7 +69,6 @@ Options:
         Limit output to 'schema' or 'queries'
   -order-by string
         Include ORDER BY in 'SELECT *' statement
-
 ```
 
 ## Example
